@@ -299,10 +299,15 @@
   /* Conversation history sent to the server */
   const history = [];
 
-  let isMuted      = false;
-  let currentAudio = null;
-  let lastReply    = '';
-  let deepMode     = false;
+  let isMuted        = false;
+  let currentAudio   = null;
+  let lastReply      = '';
+  let deepMode       = false;
+
+  /* ── TTS queue state ── */
+  let ttsQueue       = [];   // array of { text, ready, failed, audioUrl }
+  let ttsControllers = [];   // AbortControllers per chunk
+  let ttsGen         = 0;    // incremented each speak()/stopSpeaking() to invalidate stale callbacks
 
   /* ── Greeting ── */
   appendMessage('izzy', `Hey. I'm Izzy.\n\nI'm the AI collaborator on *Witness Projection* — dramaturge, life coach, research partner. I know the whole arc of the work: the two Erics, the Short Eyes monologue, the tremor, Sugar, the Nuyorican scene, all of it.\n\nI'm not here to flatter you. I'm here to do the work with you. So — what've you got?`);
@@ -328,10 +333,7 @@
     isMuted = !isMuted;
     voiceBtn.textContent = isMuted ? '🔇' : '🔊';
     voiceBtn.classList.toggle('muted', isMuted);
-    if (isMuted && currentAudio) {
-      currentAudio.pause();
-      voiceBtn.classList.remove('speaking');
-    }
+    if (isMuted) stopSpeaking();
   });
 
   /* ── Replay last reply ── */
@@ -488,30 +490,116 @@
     }
   }
 
-  /* ── ElevenLabs TTS via el-proxy ── */
-  async function speak (text) {
+  /* ── ElevenLabs TTS — sentence-chunked streaming playback ── */
+
+  /* Split reply into sentences for low-latency first-audio */
+  function splitSentences (text) {
+    // Protect abbreviations and ellipsis so their periods don't trigger splits
+    let t = text
+      .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|vs|etc|St|Ave|No|Vol)\./gi, '$1\x01')
+      .replace(/\.{2,}/g, m => '\x01'.repeat(m.length));
+
+    // Split after [.!?] (+ optional closing punctuation) followed by whitespace + capital
+    const parts = t.split(/(?<=[.!?]["')\]]*)\s+(?=[A-Z"'(\[])/);
+
+    const sentences = parts
+      .map(s => s.replace(/\x01/g, '.').trim())
+      .filter(s => s.length > 0);
+
+    return sentences.length ? sentences : [text.trim()];
+  }
+
+  /* Cancel all TTS activity immediately */
+  function stopSpeaking () {
+    ttsGen++;
+    ttsControllers.forEach(c => { try { c && c.abort(); } catch (_) {} });
+    ttsControllers = [];
+    ttsQueue.forEach(item => {
+      if (item.audioUrl) { URL.revokeObjectURL(item.audioUrl); item.audioUrl = null; }
+    });
+    ttsQueue = [];
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-    voiceBtn.classList.add('speaking');
+    voiceBtn.classList.remove('speaking');
+  }
+
+  /* Fetch TTS audio for one queue slot; marks item ready when done */
+  async function fetchChunk (queue, index, gen) {
+    const ctrl = new AbortController();
+    ttsControllers[index] = ctrl;
     try {
       const r = await fetch(EL_PROXY, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ action: 'tts', voice_id: IZZY_VOICE_ID, text }),
+        body:    JSON.stringify({ action: 'tts', voice_id: IZZY_VOICE_ID, text: queue[index].text }),
+        signal:  ctrl.signal,
       });
       if (!r.ok) throw new Error(`TTS ${r.status}`);
       const blob = await r.blob();
       const url  = URL.createObjectURL(blob);
-      currentAudio = new Audio(url);
-      currentAudio.onended = () => {
-        voiceBtn.classList.remove('speaking');
-        URL.revokeObjectURL(url);
-        currentAudio = null;
-      };
-      await currentAudio.play();
+      if (ttsGen !== gen) { URL.revokeObjectURL(url); return; }   // stale — discard
+      queue[index].audioUrl = url;
+      queue[index].ready    = true;
     } catch (e) {
-      voiceBtn.classList.remove('speaking');
-      currentAudio = null;
+      if (e.name !== 'AbortError' && ttsGen === gen) {
+        queue[index].failed = true;
+        queue[index].ready  = true;   // mark ready so queue can advance past failed chunk
+      }
     }
+  }
+
+  /* Play queue in order, waiting for each chunk to finish fetching */
+  async function playQueue (queue, index, gen) {
+    if (ttsGen !== gen) return;
+    if (index >= queue.length) {
+      if (ttsGen === gen) voiceBtn.classList.remove('speaking');
+      return;
+    }
+
+    const item = queue[index];
+
+    // Poll until this chunk's fetch completes (typically already done for later chunks)
+    while (!item.ready) {
+      if (ttsGen !== gen) return;
+      await new Promise(r => setTimeout(r, 40));
+    }
+
+    if (ttsGen !== gen || isMuted) return;
+
+    if (item.failed || !item.audioUrl) {
+      return playQueue(queue, index + 1, gen);   // skip bad chunk; keep chain alive
+    }
+
+    voiceBtn.classList.add('speaking');
+    const audio  = new Audio(item.audioUrl);
+    currentAudio = audio;
+
+    const advance = () => {
+      URL.revokeObjectURL(item.audioUrl);
+      if (currentAudio === audio) currentAudio = null;
+      playQueue(queue, index + 1, gen);
+    };
+    audio.onended = advance;
+    audio.onerror = advance;
+
+    try { await audio.play(); } catch (_) { advance(); }
+  }
+
+  /* Entry point: split, prefetch all, play in order */
+  async function speak (text) {
+    stopSpeaking();
+    if (isMuted || !text.trim()) return;
+
+    const gen       = ++ttsGen;
+    const sentences = splitSentences(text);
+    const queue     = sentences.map(s => ({ text: s, ready: false, failed: false, audioUrl: null }));
+    ttsQueue        = queue;
+    ttsControllers  = new Array(sentences.length).fill(null);
+
+    // Kick off all fetches in parallel (first gets audio fastest; rest are prefetched)
+    sentences.forEach((_, i) => fetchChunk(queue, i, gen));
+
+    // Start ordered playback — each clip waits for its chunk, then triggers the next
+    playQueue(queue, 0, gen);
   }
 
   /* ── DOM helpers ── */
