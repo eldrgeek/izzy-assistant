@@ -194,8 +194,8 @@
     #send-btn:disabled { background: var(--border); cursor: not-allowed; }
     #send-btn svg { width: 18px; height: 18px; }
 
-    /* ── Voice button (placeholder for ElevenLabs TTS) ── */
-    #voice-btn {
+    /* ── Voice/replay buttons ── */
+    #voice-btn, #replay-btn {
       width: 42px; height: 42px;
       border-radius: 10px;
       background: transparent;
@@ -204,12 +204,13 @@
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       color: var(--muted);
-      font-size: 20px;
+      font-size: 18px;
       transition: border-color 0.15s, color 0.15s;
     }
-    #voice-btn:hover { border-color: var(--amber); color: var(--amber); }
-    #voice-btn.speaking { color: var(--amber-lt); border-color: var(--amber-lt); }
-    #voice-btn[title]::after { content: attr(title); /* tooltip via title attr */ }
+    #voice-btn:hover, #replay-btn:hover { border-color: var(--amber); color: var(--amber); }
+    #voice-btn.speaking { color: var(--amber-lt); border-color: var(--amber-lt); animation: voice-pulse 1.2s ease-in-out infinite; }
+    #voice-btn.muted { color: var(--muted); opacity: 0.6; }
+    @keyframes voice-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
     /* ── Error toast ── */
     #error-toast {
@@ -250,7 +251,8 @@
 <div id="messages"></div>
 
 <div id="input-area">
-  <button id="voice-btn" title="Voice (coming soon — friend's voice clone)">🎙</button>
+  <button id="voice-btn" title="Mute / unmute Izzy's voice" aria-label="Mute voice">🔊</button>
+  <button id="replay-btn" title="Replay last reply" aria-label="Replay">🔁</button>
   <textarea id="input" rows="1" placeholder="Say something to Izzy…" autocomplete="off" spellcheck="true"></textarea>
   <button id="send-btn" aria-label="Send">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -266,20 +268,25 @@
   const ENDPOINT  = 'https://vpsmikewolf.duckdns.org/infer/chat';
   const ASSISTANT = 'izzy';
 
-  /* TODO (v2): swap ELEVENLABS_VOICE_ID to Eric's friend's cloned voice once created.
-   * IVC or PVC must be set up in ElevenLabs with the friend's consent.
-   * Paste the voice ID here and uncomment the speak() implementation below. */
-  const ELEVENLABS_VOICE_ID  = null;  /* replace with actual voice ID */
-  const ELEVENLABS_API_KEY   = null;  /* never put a real key here — use a proxy or env */
+  /* ── ElevenLabs TTS via the shared el-proxy on bill-talk ── */
+  const EL_PROXY = 'https://bill-talk.netlify.app/.netlify/functions/el-proxy';
+  /* Izzy placeholder voice — Domi (strong, confident; warm edge fits NYC character).
+   * Swap IZZY_VOICE_ID to Eric's friend's ElevenLabs voice clone when it's ready. */
+  const IZZY_VOICE_ID = 'AZnzlk1XvdvUeBnXmlld';
 
   const messagesEl = document.getElementById('messages');
   const inputEl    = document.getElementById('input');
   const sendBtn    = document.getElementById('send-btn');
   const voiceBtn   = document.getElementById('voice-btn');
+  const replayBtn  = document.getElementById('replay-btn');
   const errorToast = document.getElementById('error-toast');
 
   /* Conversation history sent to the server (excludes system prompt, which is server-side) */
   const history = [];
+
+  let isMuted     = false;
+  let currentAudio = null;
+  let lastReply   = '';
 
   /* ── Greeting ── */
   appendMessage('izzy', `Hey. I'm Izzy.\n\nI'm the AI collaborator on *Witness Projection* — dramaturge, life coach, research partner. I know the whole arc of the work: the two Erics, the Short Eyes monologue, the tremor, Sugar, the Nuyorican scene, all of it.\n\nI'm not here to flatter you. I'm here to do the work with you. So — what've you got?`);
@@ -290,22 +297,30 @@
     inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
   });
 
-  /* ── Send on Enter (Shift+Enter = newline) ── */
+  /* ── Send on Enter / Cmd+Enter / Ctrl+Enter; Shift+Enter = newline ── */
   inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter') {
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey) return; // Shift+Enter → newline
       e.preventDefault();
       sendMessage();
     }
   });
   sendBtn.addEventListener('click', sendMessage);
 
-  /* ── Voice placeholder ── */
+  /* ── Mute toggle ── */
   voiceBtn.addEventListener('click', () => {
-    if (!ELEVENLABS_VOICE_ID) {
-      showError('Voice coming soon — Eric's friend's ElevenLabs voice clone will go here once it's made.');
-      return;
+    isMuted = !isMuted;
+    voiceBtn.textContent = isMuted ? '🔇' : '🔊';
+    voiceBtn.classList.toggle('muted', isMuted);
+    if (isMuted && currentAudio) {
+      currentAudio.pause();
+      voiceBtn.classList.remove('speaking');
     }
-    /* TODO: implement TTS when voice ID is set */
+  });
+
+  /* ── Replay last reply ── */
+  replayBtn.addEventListener('click', () => {
+    if (lastReply) speak(lastReply);
   });
 
   async function sendMessage () {
@@ -336,18 +351,16 @@
       if (!res.ok) {
         const msg = data.error || `Server error ${res.status}`;
         showError(msg);
-        history.pop(); /* remove the failed user turn */
+        history.pop();
       } else {
         const reply = data.reply || '';
         history.push({ role: 'assistant', content: reply });
-        const msgEl = appendMessage('izzy', reply);
-
-        /* ── ElevenLabs TTS hook (fires when voice is configured) ── */
-        if (ELEVENLABS_VOICE_ID && reply) {
-          speak(reply).catch(console.error);
-        }
-
+        appendMessage('izzy', reply);
+        lastReply = reply;
         scrollToBottom();
+
+        /* Auto-speak — user pressing Send is the gesture that unlocks audio */
+        if (!isMuted && reply) speak(reply).catch(() => {}); // TTS failure never blocks chat
       }
     } catch (err) {
       typingEl.remove();
@@ -359,34 +372,30 @@
     }
   }
 
-  /* ── ElevenLabs TTS (wired to placeholder — activate when voice ID is set) ── */
+  /* ── ElevenLabs TTS via el-proxy (POST to avoid URL-length limits on long replies) ── */
   async function speak (text) {
-    /* TODO: replace with server-side proxy to avoid exposing API key.
-     * Direct browser→ElevenLabs calls require CORS + key exposure.
-     * Recommended: add a /tts endpoint to soma-infer that proxies to ElevenLabs. */
-    if (!ELEVENLABS_VOICE_ID || !ELEVENLABS_API_KEY) return;
-
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     voiceBtn.classList.add('speaking');
     try {
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+      const r = await fetch(EL_PROXY, {
         method:  'POST',
-        headers: {
-          'xi-api-key':    ELEVENLABS_API_KEY,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          model_id: 'eleven_turbo_v2',
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'tts', voice_id: IZZY_VOICE_ID, text }),
       });
+      if (!r.ok) throw new Error(`TTS ${r.status}`);
       const blob = await r.blob();
       const url  = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => { voiceBtn.classList.remove('speaking'); URL.revokeObjectURL(url); };
-      await audio.play();
+      currentAudio = new Audio(url);
+      currentAudio.onended = () => {
+        voiceBtn.classList.remove('speaking');
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+      };
+      await currentAudio.play();
     } catch (e) {
       voiceBtn.classList.remove('speaking');
+      currentAudio = null;
+      /* TTS failure is silent — text reply is already visible */
     }
   }
 
@@ -401,7 +410,6 @@
 
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    /* Render *italic* markdown-lite */
     bubble.innerHTML = escapeHtml(text).replace(/\*(.*?)\*/g, '<em>$1</em>');
 
     wrapper.appendChild(label);
