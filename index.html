@@ -492,9 +492,11 @@
 <div id="error-toast"></div>
 
 <script>
-  const ENDPOINT    = 'https://vpsmikewolf.duckdns.org/infer/chat';
-  const STORE_BASE  = 'https://vpsmikewolf.duckdns.org/izzy';
-  const ASSISTANT   = 'izzy';
+  const ENDPOINT       = 'https://vpsmikewolf.duckdns.org/infer/chat';
+  const STORE_BASE     = 'https://vpsmikewolf.duckdns.org/izzy';
+  const KNOWLEDGE_BASE = 'https://vpsmikewolf.duckdns.org/knowledge';
+  const ASSISTANT      = 'izzy';
+  const RAG_NAMESPACE  = 'eric/izzy';
 
   /* ElevenLabs TTS */
   const EL_PROXY      = 'https://bill-talk.netlify.app/.netlify/functions/el-proxy';
@@ -538,6 +540,26 @@
   let ttsQueue       = [];
   let ttsControllers = [];
   let ttsGen         = 0;
+
+  /* ══════════════════════════════════════
+     KNOWLEDGE API (RAG retrieval)
+  ══════════════════════════════════════ */
+
+  async function queryKnowledge(userText) {
+    try {
+      const r = await fetch(KNOWLEDGE_BASE + '/query', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ namespace: RAG_NAMESPACE, query: userText, k: 3 }),
+      });
+      if (!r.ok) return null;
+      const data = await r.json();
+      if (!data.results || data.results.length === 0) return null;
+      return data.results;
+    } catch (_) {
+      return null; // no-op on network error
+    }
+  }
 
   /* ══════════════════════════════════════
      STORE API helpers
@@ -852,6 +874,26 @@
         },
       ];
       apiMessages = docCtx.concat(apiMessages);
+    }
+
+    /* RAG: query knowledge base and inject retrieved passages as context.
+       No-op (silent) when the namespace is empty or the service is unreachable. */
+    const ragResults = await queryKnowledge(text);
+    if (ragResults && ragResults.length > 0) {
+      const ragText = ragResults
+        .map(r => '[' + r.source_id + ']\n' + r.text)
+        .join('\n\n---\n\n');
+      const ragCtx = [
+        {
+          role: 'user',
+          content: 'RETRIEVED KNOWLEDGE (from corpus — relevant background; use as context only):\n---\n' + ragText + '\n---',
+        },
+        {
+          role: 'assistant',
+          content: 'Understood — I have the retrieved context.',
+        },
+      ];
+      apiMessages = ragCtx.concat(apiMessages);
     }
 
     const t0 = Date.now();
