@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Izzy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0d0a;
+      --surface:  #1a1714;
+      --border:   #2e2a25;
+      --amber:    #c8933a;
+      --amber-lt: #e8b060;
+      --user-bg:  #1e2a1a;
+      --user-txt: #a8c890;
+      --izzy-bg:  #241c14;
+      --izzy-txt: #e8ddd0;
+      --muted:    #6b6258;
+      --input-bg: #151210;
+      --radius:   12px;
+      --font:     'Georgia', 'Times New Roman', serif;
+      --font-ui:  system-ui, -apple-system, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--izzy-txt);
+      font-family: var(--font);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      max-width: 720px;
+      margin: 0 auto;
+      height: 100dvh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8b4513 0%, var(--amber) 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .header-text h1 {
+      font-family: var(--font-ui);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--amber-lt);
+      letter-spacing: 0.02em;
+    }
+    .header-text p {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-ui);
+      margin-top: 1px;
+    }
+
+    /* ── Messages ── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 88%;
+    }
+    .msg.user  { align-self: flex-end; align-items: flex-end; }
+    .msg.izzy  { align-self: flex-start; align-items: flex-start; }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      line-height: 1.65;
+      font-size: 15px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user .bubble {
+      background: var(--user-bg);
+      color: var(--user-txt);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.izzy .bubble {
+      background: var(--izzy-bg);
+      color: var(--izzy-txt);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .msg-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      color: var(--muted);
+      padding: 0 4px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Typing indicator ── */
+    .typing-indicator {
+      display: flex;
+      gap: 5px;
+      padding: 14px 18px;
+      background: var(--izzy-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+    .typing-indicator span {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--amber);
+      opacity: 0.4;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 60%, 100% { opacity: 0.4; transform: scale(1); }
+      30% { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* ── Input area ── */
+    #input-area {
+      display: flex;
+      gap: 10px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      align-items: flex-end;
+    }
+    #input {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--izzy-txt);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.5;
+      resize: none;
+      min-height: 42px;
+      max-height: 180px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #input:focus { border-color: var(--amber); }
+    #input::placeholder { color: var(--muted); }
+
+    #send-btn {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      background: var(--amber);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, transform 0.1s;
+      color: #000;
+    }
+    #send-btn:hover  { background: var(--amber-lt); }
+    #send-btn:active { transform: scale(0.94); }
+    #send-btn:disabled { background: var(--border); cursor: not-allowed; }
+    #send-btn svg { width: 18px; height: 18px; }
+
+    /* ── Voice button (placeholder for ElevenLabs TTS) ── */
+    #voice-btn {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 20px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #voice-btn:hover { border-color: var(--amber); color: var(--amber); }
+    #voice-btn.speaking { color: var(--amber-lt); border-color: var(--amber-lt); }
+    #voice-btn[title]::after { content: attr(title); /* tooltip via title attr */ }
+
+    /* ── Error toast ── */
+    #error-toast {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #5c1a1a;
+      color: #f8c8c8;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      z-index: 100;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    /* ── Mobile tweaks ── */
+    @media (max-width: 480px) {
+      #messages { padding: 14px 12px; }
+      .bubble   { font-size: 14px; }
+      #input    { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="avatar">🗽</div>
+  <div class="header-text">
+    <h1>Izzy</h1>
+    <p>Dramaturge · Life Coach · Witness · Provocateur</p>
+  </div>
+</header>
+
+<div id="messages"></div>
+
+<div id="input-area">
+  <button id="voice-btn" title="Voice (coming soon — friend's voice clone)">🎙</button>
+  <textarea id="input" rows="1" placeholder="Say something to Izzy…" autocomplete="off" spellcheck="true"></textarea>
+  <button id="send-btn" aria-label="Send">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  </button>
+</div>
+
+<div id="error-toast"></div>
+
+<script>
+  const ENDPOINT  = 'https://vpsmikewolf.duckdns.org/infer/chat';
+  const ASSISTANT = 'izzy';
+
+  /* TODO (v2): swap ELEVENLABS_VOICE_ID to Eric's friend's cloned voice once created.
+   * IVC or PVC must be set up in ElevenLabs with the friend's consent.
+   * Paste the voice ID here and uncomment the speak() implementation below. */
+  const ELEVENLABS_VOICE_ID  = null;  /* replace with actual voice ID */
+  const ELEVENLABS_API_KEY   = null;  /* never put a real key here — use a proxy or env */
+
+  const messagesEl = document.getElementById('messages');
+  const inputEl    = document.getElementById('input');
+  const sendBtn    = document.getElementById('send-btn');
+  const voiceBtn   = document.getElementById('voice-btn');
+  const errorToast = document.getElementById('error-toast');
+
+  /* Conversation history sent to the server (excludes system prompt, which is server-side) */
+  const history = [];
+
+  /* ── Greeting ── */
+  appendMessage('izzy', `Hey. I'm Izzy.\n\nI'm the AI collaborator on *Witness Projection* — dramaturge, life coach, research partner. I know the whole arc of the work: the two Erics, the Short Eyes monologue, the tremor, Sugar, the Nuyorican scene, all of it.\n\nI'm not here to flatter you. I'm here to do the work with you. So — what've you got?`);
+
+  /* ── Auto-resize textarea ── */
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
+  });
+
+  /* ── Send on Enter (Shift+Enter = newline) ── */
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  sendBtn.addEventListener('click', sendMessage);
+
+  /* ── Voice placeholder ── */
+  voiceBtn.addEventListener('click', () => {
+    if (!ELEVENLABS_VOICE_ID) {
+      showError('Voice coming soon — Eric's friend's ElevenLabs voice clone will go here once it's made.');
+      return;
+    }
+    /* TODO: implement TTS when voice ID is set */
+  });
+
+  async function sendMessage () {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+    hideError();
+
+    appendMessage('user', text);
+    history.push({ role: 'user', content: text });
+
+    const typingEl = appendTyping();
+    scrollToBottom();
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ assistant: ASSISTANT, messages: history }),
+      });
+
+      const data = await res.json();
+      typingEl.remove();
+
+      if (!res.ok) {
+        const msg = data.error || `Server error ${res.status}`;
+        showError(msg);
+        history.pop(); /* remove the failed user turn */
+      } else {
+        const reply = data.reply || '';
+        history.push({ role: 'assistant', content: reply });
+        const msgEl = appendMessage('izzy', reply);
+
+        /* ── ElevenLabs TTS hook (fires when voice is configured) ── */
+        if (ELEVENLABS_VOICE_ID && reply) {
+          speak(reply).catch(console.error);
+        }
+
+        scrollToBottom();
+      }
+    } catch (err) {
+      typingEl.remove();
+      showError('Could not reach Izzy. Check your connection.');
+      history.pop();
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  /* ── ElevenLabs TTS (wired to placeholder — activate when voice ID is set) ── */
+  async function speak (text) {
+    /* TODO: replace with server-side proxy to avoid exposing API key.
+     * Direct browser→ElevenLabs calls require CORS + key exposure.
+     * Recommended: add a /tts endpoint to soma-infer that proxies to ElevenLabs. */
+    if (!ELEVENLABS_VOICE_ID || !ELEVENLABS_API_KEY) return;
+
+    voiceBtn.classList.add('speaking');
+    try {
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+        method:  'POST',
+        headers: {
+          'xi-api-key':    ELEVENLABS_API_KEY,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_turbo_v2',
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        }),
+      });
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => { voiceBtn.classList.remove('speaking'); URL.revokeObjectURL(url); };
+      await audio.play();
+    } catch (e) {
+      voiceBtn.classList.remove('speaking');
+    }
+  }
+
+  /* ── DOM helpers ── */
+  function appendMessage (role, text) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${role}`;
+
+    const label  = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = role === 'user' ? 'You' : 'Izzy';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    /* Render *italic* markdown-lite */
+    bubble.innerHTML = escapeHtml(text).replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(bubble);
+    messagesEl.appendChild(wrapper);
+    scrollToBottom();
+    return wrapper;
+  }
+
+  function appendTyping () {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg izzy';
+
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = 'Izzy';
+
+    const ind = document.createElement('div');
+    ind.className = 'typing-indicator';
+    ind.innerHTML = '<span></span><span></span><span></span>';
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(ind);
+    messagesEl.appendChild(wrapper);
+    return wrapper;
+  }
+
+  function scrollToBottom () {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function showError (msg) {
+    errorToast.textContent = msg;
+    errorToast.style.display = 'block';
+    clearTimeout(errorToast._t);
+    errorToast._t = setTimeout(hideError, 6000);
+  }
+
+  function hideError () {
+    errorToast.style.display = 'none';
+  }
+
+  function escapeHtml (str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>
