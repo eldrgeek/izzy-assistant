@@ -22,6 +22,8 @@
       --radius:   12px;
       --font:     'Georgia', 'Times New Roman', serif;
       --font-ui:  system-ui, -apple-system, sans-serif;
+      --doc-bg:   #12100e;
+      --doc-txt:  #d8cfc5;
     }
 
     html, body {
@@ -44,32 +46,44 @@
     header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 16px 20px 14px;
+      gap: 10px;
+      padding: 12px 16px 11px;
       border-bottom: 1px solid var(--border);
       background: var(--surface);
       flex-shrink: 0;
     }
     .avatar {
-      width: 42px; height: 42px;
+      width: 38px; height: 38px;
       border-radius: 50%;
       background: linear-gradient(135deg, #8b4513 0%, var(--amber) 100%);
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
+      font-size: 18px;
       flex-shrink: 0;
+    }
+    .header-text {
+      flex: 1;
+      min-width: 0;
     }
     .header-text h1 {
       font-family: var(--font-ui);
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 600;
       color: var(--amber-lt);
       letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .header-text p {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--muted);
       font-family: var(--font-ui);
       margin-top: 1px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
     }
 
     /* ── Messages ── */
@@ -128,6 +142,52 @@
       margin-left: 4px;
     }
 
+    /* ── Proposal block ── */
+    .proposal-block {
+      margin-top: 10px;
+      border: 1px solid var(--amber);
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(200, 147, 58, 0.06);
+    }
+    .proposal-header {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      color: var(--amber);
+      padding: 5px 10px;
+      background: rgba(200, 147, 58, 0.12);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .proposal-text {
+      padding: 10px 14px;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--izzy-txt);
+    }
+    .proposal-actions {
+      display: flex;
+      gap: 6px;
+      padding: 8px 10px;
+      border-top: 1px solid var(--border);
+    }
+    .proposal-btn {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--amber);
+      background: transparent;
+      color: var(--amber);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .proposal-btn:hover { background: rgba(200, 147, 58, 0.18); }
+    .proposal-btn.replace { background: var(--amber); color: #000; }
+    .proposal-btn.replace:hover { background: var(--amber-lt); }
+
     /* ── Typing indicator ── */
     .typing-indicator {
       display: flex;
@@ -152,6 +212,60 @@
       0%, 60%, 100% { opacity: 0.4; transform: scale(1); }
       30% { opacity: 1; transform: scale(1.15); }
     }
+
+    /* ── Working doc panel ── */
+    #script-panel {
+      flex-shrink: 0;
+      height: 0;
+      overflow: hidden;
+      transition: height 0.25s ease;
+      border-top: 1px solid transparent;
+      display: flex;
+      flex-direction: column;
+    }
+    #script-panel.open {
+      height: 42vh;
+      border-top-color: var(--amber);
+    }
+    .script-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px 6px;
+      background: var(--surface);
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .script-header span {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--amber);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .script-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #doc-save-status {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      color: var(--muted);
+    }
+    #script-editor {
+      flex: 1;
+      background: var(--doc-bg);
+      color: var(--doc-txt);
+      border: none;
+      padding: 12px 16px;
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+    }
+    #script-editor::placeholder { color: var(--muted); }
 
     /* ── Input area ── */
     #input-area {
@@ -199,31 +313,101 @@
     #send-btn:disabled { background: var(--border); cursor: not-allowed; }
     #send-btn svg { width: 18px; height: 18px; }
 
-    /* ── Icon buttons (voice, replay, mic, deep) ── */
+    /* ── Icon buttons ── */
     .icon-btn {
-      width: 42px; height: 42px;
-      border-radius: 10px;
+      width: 38px; height: 38px;
+      border-radius: 8px;
       background: transparent;
       border: 1px solid var(--border);
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       color: var(--muted);
-      font-size: 17px;
+      font-size: 15px;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
     .icon-btn:hover { border-color: var(--amber); color: var(--amber); }
     .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .icon-btn:disabled:hover { border-color: var(--border); color: var(--muted); }
+    .icon-btn.active { color: var(--amber-lt); border-color: var(--amber-lt); background: rgba(200, 147, 58, 0.12); }
 
     #voice-btn.speaking { color: var(--amber-lt); border-color: var(--amber-lt); animation: voice-pulse 1.2s ease-in-out infinite; }
     #voice-btn.muted    { color: var(--muted); opacity: 0.6; }
-
     #mic-btn.listening  { color: var(--amber-lt); border-color: var(--amber-lt); animation: voice-pulse 0.8s ease-in-out infinite; }
-
     #deep-btn.deep-on   { color: var(--amber-lt); border-color: var(--amber-lt); background: rgba(200, 147, 58, 0.12); }
 
     @keyframes voice-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* ── History overlay ── */
+    #history-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 200;
+      display: flex;
+      align-items: stretch;
+    }
+    #history-overlay.hidden { display: none; }
+
+    .history-panel {
+      width: min(340px, 92vw);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .history-header span {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--amber-lt);
+    }
+    #session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    #session-list::-webkit-scrollbar { width: 4px; }
+    #session-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .session-item {
+      padding: 11px 16px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .session-item:hover { background: rgba(200, 147, 58, 0.07); }
+    .session-item.current { border-left-color: var(--amber); background: rgba(200, 147, 58, 0.1); }
+    .session-title {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: var(--izzy-txt);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-meta {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .session-list-empty {
+      padding: 20px 16px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
 
     /* ── Error toast ── */
     #error-toast {
@@ -259,9 +443,26 @@
     <h1>Izzy</h1>
     <p>Dramaturge · Life Coach · Witness · Provocateur</p>
   </div>
+  <div class="header-actions">
+    <button id="history-btn" class="icon-btn" title="Session history">📜</button>
+    <button id="script-btn" class="icon-btn" title="Working document">📄</button>
+    <button id="new-session-btn" class="icon-btn" title="New session">✚</button>
+  </div>
 </header>
 
 <div id="messages"></div>
+
+<!-- Working document panel (collapsible) -->
+<div id="script-panel">
+  <div class="script-header">
+    <span>📄 Working Document</span>
+    <div class="script-header-right">
+      <span id="doc-save-status"></span>
+      <button id="script-close" class="icon-btn" style="width:28px;height:28px;font-size:12px;" title="Close document">✕</button>
+    </div>
+  </div>
+  <textarea id="script-editor" placeholder="Your script, scenes, and notes go here. Izzy reads this as context on every turn.&#10;&#10;When you want Izzy to propose a revision, ask her — she will wrap proposals in <<<PROPOSAL>>> markers that you can apply with one click."></textarea>
+</div>
 
 <div id="input-area">
   <button id="voice-btn" class="icon-btn" title="Mute / unmute Izzy's voice" aria-label="Mute voice">🔊</button>
@@ -277,48 +478,295 @@
   </button>
 </div>
 
+<!-- History overlay -->
+<div id="history-overlay" class="hidden">
+  <div class="history-panel">
+    <div class="history-header">
+      <span>Session History</span>
+      <button id="history-close" class="icon-btn" style="width:28px;height:28px;font-size:12px;" title="Close">✕</button>
+    </div>
+    <div id="session-list"></div>
+  </div>
+</div>
+
 <div id="error-toast"></div>
 
 <script>
-  const ENDPOINT  = 'https://vpsmikewolf.duckdns.org/infer/chat';
-  const ASSISTANT = 'izzy';
+  const ENDPOINT    = 'https://vpsmikewolf.duckdns.org/infer/chat';
+  const STORE_BASE  = 'https://vpsmikewolf.duckdns.org/izzy';
+  const ASSISTANT   = 'izzy';
 
-  /* ── ElevenLabs TTS via the shared el-proxy on bill-talk ── */
-  const EL_PROXY    = 'https://bill-talk.netlify.app/.netlify/functions/el-proxy';
+  /* ElevenLabs TTS */
+  const EL_PROXY      = 'https://bill-talk.netlify.app/.netlify/functions/el-proxy';
   const IZZY_VOICE_ID = 'RsotjdYjhjPD5V0I7nzI';
 
-  const messagesEl = document.getElementById('messages');
-  const inputEl    = document.getElementById('input');
-  const sendBtn    = document.getElementById('send-btn');
-  const voiceBtn   = document.getElementById('voice-btn');
-  const replayBtn  = document.getElementById('replay-btn');
-  const micBtn     = document.getElementById('mic-btn');
-  const deepBtn    = document.getElementById('deep-btn');
-  const errorToast = document.getElementById('error-toast');
+  /* ── DOM refs ── */
+  const messagesEl  = document.getElementById('messages');
+  const inputEl     = document.getElementById('input');
+  const sendBtn     = document.getElementById('send-btn');
+  const voiceBtn    = document.getElementById('voice-btn');
+  const replayBtn   = document.getElementById('replay-btn');
+  const micBtn      = document.getElementById('mic-btn');
+  const deepBtn     = document.getElementById('deep-btn');
+  const errorToast  = document.getElementById('error-toast');
+  const historyBtn  = document.getElementById('history-btn');
+  const scriptBtn   = document.getElementById('script-btn');
+  const newSessBtn  = document.getElementById('new-session-btn');
+  const historyOverlay = document.getElementById('history-overlay');
+  const historyClose   = document.getElementById('history-close');
+  const sessionListEl  = document.getElementById('session-list');
+  const scriptPanel    = document.getElementById('script-panel');
+  const scriptClose    = document.getElementById('script-close');
+  const scriptEditor   = document.getElementById('script-editor');
+  const docSaveStatus  = document.getElementById('doc-save-status');
 
-  /* Conversation history sent to the server */
-  const history = [];
+  /* ── State ── */
+  const history     = [];  // conversation turns sent to server
+  let isMuted       = false;
+  let currentAudio  = null;
+  let lastReply     = '';
+  let deepMode      = false;
 
-  let isMuted        = false;
-  let currentAudio   = null;
-  let lastReply      = '';
-  let deepMode       = false;
+  let currentSessionId    = null;
+  let currentSessionTitle = null;
+
+  let docContent   = '';
+  let docSaveTimer = null;
+  let docDirty     = false;
 
   /* ── TTS queue state ── */
-  let ttsQueue       = [];   // array of { text, ready, failed, audioUrl }
-  let ttsControllers = [];   // AbortControllers per chunk
-  let ttsGen         = 0;    // incremented each speak()/stopSpeaking() to invalidate stale callbacks
+  let ttsQueue       = [];
+  let ttsControllers = [];
+  let ttsGen         = 0;
 
-  /* ── Greeting ── */
-  appendMessage('izzy', `Hey. I'm Izzy.\n\nI'm the AI collaborator on *Witness Projection* — dramaturge, life coach, research partner. I know the whole arc of the work: the two Erics, the Short Eyes monologue, the tremor, Sugar, the Nuyorican scene, all of it.\n\nI'm not here to flatter you. I'm here to do the work with you. So — what've you got?`);
+  /* ══════════════════════════════════════
+     STORE API helpers
+  ══════════════════════════════════════ */
 
-  /* ── Auto-resize textarea ── */
+  async function storeGet(path) {
+    const r = await fetch(STORE_BASE + path);
+    if (!r.ok) throw new Error('store GET ' + path + ' failed ' + r.status);
+    return r.json();
+  }
+
+  async function storePut(path, body) {
+    const r = await fetch(STORE_BASE + path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error('store PUT ' + path + ' failed ' + r.status);
+    return r.json();
+  }
+
+  async function storePost(path, body) {
+    const r = await fetch(STORE_BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error('store POST ' + path + ' failed ' + r.status);
+    return r.json();
+  }
+
+  /* ══════════════════════════════════════
+     WORKING DOCUMENT
+  ══════════════════════════════════════ */
+
+  async function loadWorkdoc() {
+    try {
+      const doc = await storeGet('/workdoc');
+      docContent = doc.content || '';
+      scriptEditor.value = docContent;
+    } catch (e) {
+      console.warn('[izzy] workdoc load failed:', e);
+    }
+  }
+
+  async function saveWorkdoc() {
+    const content = scriptEditor.value;
+    if (content === docContent) return;
+    try {
+      await storePut('/workdoc', { content });
+      docContent = content;
+      docSaveStatus.textContent = 'Saved';
+      setTimeout(() => { docSaveStatus.textContent = ''; }, 2000);
+    } catch (e) {
+      docSaveStatus.textContent = 'Save failed';
+      console.warn('[izzy] workdoc save failed:', e);
+    }
+    docDirty = false;
+  }
+
+  scriptEditor.addEventListener('input', () => {
+    docDirty = true;
+    docSaveStatus.textContent = 'Unsaved…';
+    clearTimeout(docSaveTimer);
+    docSaveTimer = setTimeout(saveWorkdoc, 1200);
+  });
+
+  /* ══════════════════════════════════════
+     SESSION MANAGEMENT
+  ══════════════════════════════════════ */
+
+  function sessionMessagesForStore() {
+    return history.map((m, i) => ({
+      role: m.role,
+      content: m.content,
+      ts: m.ts || new Date().toISOString(),
+    }));
+  }
+
+  async function createSession(title, messages) {
+    const data = await storePost('/sessions', { title, messages: messages || [] });
+    currentSessionId    = data.id;
+    currentSessionTitle = data.title;
+    return data.id;
+  }
+
+  async function saveCurrentSession() {
+    if (!currentSessionId) return;
+    try {
+      await storePut('/sessions/' + currentSessionId, {
+        title: currentSessionTitle,
+        messages: sessionMessagesForStore(),
+      });
+    } catch (e) {
+      console.warn('[izzy] session save failed:', e);
+    }
+  }
+
+  async function loadSessionIntoUI(sessionData) {
+    /* Clear UI */
+    messagesEl.innerHTML = '';
+    history.length = 0;
+
+    currentSessionId    = sessionData.id;
+    currentSessionTitle = sessionData.title;
+
+    const msgs = sessionData.messages || [];
+    msgs.forEach(m => {
+      history.push({ role: m.role, content: m.content, ts: m.ts });
+      if (m.role === 'user') {
+        appendMessage('user', m.content);
+      } else if (m.role === 'assistant') {
+        appendMessage('izzy', m.content);
+      }
+    });
+
+    scrollToBottom();
+  }
+
+  async function startNewSession() {
+    messagesEl.innerHTML = '';
+    history.length = 0;
+    currentSessionId    = null;
+    currentSessionTitle = null;
+
+    appendMessage('izzy', 'Hey. I\'m Izzy.\n\nI\'m the AI collaborator on *Witness Projection* — dramaturge, life coach, research partner. I know the whole arc of the work: the two Erics, the Short Eyes monologue, the tremor, Sugar, the Nuyorican scene, all of it.\n\nI\'m not here to flatter you. I\'m here to do the work with you. So — what\'ve you got?');
+  }
+
+  async function loadMostRecentSession() {
+    try {
+      const list = await storeGet('/sessions');
+      if (!list || list.length === 0) {
+        await startNewSession();
+        return;
+      }
+      const most_recent = list[0]; // store returns newest first
+      const full = await storeGet('/sessions/' + most_recent.id);
+      if (!full.messages || full.messages.length === 0) {
+        await startNewSession();
+        return;
+      }
+      await loadSessionIntoUI(full);
+    } catch (e) {
+      console.warn('[izzy] could not load recent session:', e);
+      await startNewSession();
+    }
+  }
+
+  /* ══════════════════════════════════════
+     HISTORY PANEL
+  ══════════════════════════════════════ */
+
+  async function openHistoryPanel() {
+    historyOverlay.classList.remove('hidden');
+    sessionListEl.innerHTML = '<div class="session-list-empty">Loading…</div>';
+    try {
+      const list = await storeGet('/sessions');
+      if (!list || list.length === 0) {
+        sessionListEl.innerHTML = '<div class="session-list-empty">No saved sessions yet.</div>';
+        return;
+      }
+      sessionListEl.innerHTML = '';
+      list.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'session-item' + (s.id === currentSessionId ? ' current' : '');
+        const d = new Date(s.date);
+        const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        item.innerHTML =
+          '<div class="session-title">' + escapeHtml(s.title) + '</div>' +
+          '<div class="session-meta">' + dateStr + ' · ' + s.messageCount + ' messages</div>';
+        item.addEventListener('click', async () => {
+          historyOverlay.classList.add('hidden');
+          if (s.id === currentSessionId) return;
+          try {
+            const full = await storeGet('/sessions/' + s.id);
+            await loadSessionIntoUI(full);
+          } catch (e) {
+            showError('Could not load session.');
+          }
+        });
+        sessionListEl.appendChild(item);
+      });
+    } catch (e) {
+      sessionListEl.innerHTML = '<div class="session-list-empty">Could not load history.</div>';
+    }
+  }
+
+  historyBtn.addEventListener('click', openHistoryPanel);
+  historyClose.addEventListener('click', () => historyOverlay.classList.add('hidden'));
+  historyOverlay.addEventListener('click', e => {
+    if (e.target === historyOverlay) historyOverlay.classList.add('hidden');
+  });
+
+  /* ══════════════════════════════════════
+     SCRIPT / WORKING DOC PANEL
+  ══════════════════════════════════════ */
+
+  function toggleScriptPanel() {
+    const open = scriptPanel.classList.toggle('open');
+    scriptBtn.classList.toggle('active', open);
+    if (open) scriptEditor.focus();
+  }
+
+  scriptBtn.addEventListener('click', toggleScriptPanel);
+  scriptClose.addEventListener('click', () => {
+    scriptPanel.classList.remove('open');
+    scriptBtn.classList.remove('active');
+    if (docDirty) saveWorkdoc();
+  });
+
+  /* New session button */
+  newSessBtn.addEventListener('click', async () => {
+    if (history.length > 0) {
+      const ok = confirm('Start a new session? Current session is saved in history.');
+      if (!ok) return;
+    }
+    await startNewSession();
+  });
+
+  /* ══════════════════════════════════════
+     AUTO-RESIZE TEXTAREA
+  ══════════════════════════════════════ */
+
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
   });
 
-  /* ── Send on Enter / Cmd+Enter / Ctrl+Enter; Shift+Enter = newline ── */
+  /* Send on Enter / Cmd+Enter; Shift+Enter = newline */
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       if (e.shiftKey && !e.metaKey && !e.ctrlKey) return;
@@ -350,7 +798,263 @@
       : 'Deep mode — force Opus for this message';
   });
 
-  /* ── Web Speech API (STT) ── */
+  /* ══════════════════════════════════════
+     SEND MESSAGE
+  ══════════════════════════════════════ */
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+    hideError();
+
+    const sendDeep = deepMode;
+    if (deepMode) {
+      deepMode = false;
+      deepBtn.classList.remove('deep-on');
+      deepBtn.title = 'Deep mode — force Opus for this message';
+    }
+
+    const ts = new Date().toISOString();
+    appendMessage('user', text);
+    history.push({ role: 'user', content: text, ts });
+
+    /* Create session on first real user message */
+    if (!currentSessionId) {
+      const title = text.slice(0, 60) + (text.length > 60 ? '…' : '');
+      try {
+        await createSession(title, []);
+        currentSessionTitle = title;
+      } catch (e) {
+        console.warn('[izzy] session create failed:', e);
+      }
+    }
+
+    const typingEl = appendTyping();
+    scrollToBottom();
+
+    /* Build messages for API — inject workdoc context if present */
+    let apiMessages = history.map(m => ({ role: m.role, content: m.content }));
+    const docVal = scriptEditor.value.trim();
+    if (docVal) {
+      const docCtx = [
+        {
+          role: 'user',
+          content: 'WORKING DOCUMENT (current draft for context):\n---\n' + docVal +
+            '\n---\nKeep this in mind. When I ask you to propose a revision or addition, wrap the proposed text in <<<PROPOSAL>>> and <<<END PROPOSAL>>> markers.',
+        },
+        {
+          role: 'assistant',
+          content: 'Understood — I have your current draft in view.',
+        },
+      ];
+      apiMessages = docCtx.concat(apiMessages);
+    }
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch(ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ assistant: ASSISTANT, messages: apiMessages, deepMode: sendDeep }),
+      });
+
+      const data = await res.json();
+      typingEl.remove();
+
+      if (!res.ok) {
+        showError(data.error || 'Server error ' + res.status);
+        history.pop();
+      } else {
+        const reply = data.reply || '';
+        const replyTs = new Date().toISOString();
+        history.push({ role: 'assistant', content: reply, ts: replyTs });
+        appendMessage('izzy', reply, { model: data.model, source: data.source });
+        lastReply = reply;
+        scrollToBottom();
+
+        console.log('[izzy] reply via ' + (data.source || '?') + ' (' + (data.model || '?') + ') in ' + (Date.now() - t0) + 'ms');
+
+        /* Save session */
+        await saveCurrentSession();
+
+        /* Speak (strip proposal markers from TTS) */
+        if (!isMuted && reply) {
+          const ttsText = reply.replace(/<<<PROPOSAL>>>[\s\S]*?<<<END PROPOSAL>>>/g, '[proposed edit]');
+          speak(ttsText).catch(() => {});
+        }
+      }
+    } catch (err) {
+      typingEl.remove();
+      showError('Could not reach Izzy. Check your connection.');
+      history.pop();
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  /* ══════════════════════════════════════
+     PROPOSAL BLOCK RENDERING
+  ══════════════════════════════════════ */
+
+  function renderProposalBlock(proposalText) {
+    const block = document.createElement('div');
+    block.className = 'proposal-block';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'proposal-header';
+    hdr.textContent = '✏️ Izzy proposes';
+    block.appendChild(hdr);
+
+    const txt = document.createElement('div');
+    txt.className = 'proposal-text';
+    txt.textContent = proposalText.trim();
+    block.appendChild(txt);
+
+    const actions = document.createElement('div');
+    actions.className = 'proposal-actions';
+
+    const replaceBtn = document.createElement('button');
+    replaceBtn.className = 'proposal-btn replace';
+    replaceBtn.textContent = 'Replace doc';
+    replaceBtn.title = 'Replace entire working document with this proposal';
+    replaceBtn.addEventListener('click', () => {
+      scriptEditor.value = proposalText.trim();
+      docContent = ''; // force dirty
+      saveWorkdoc();
+      if (!scriptPanel.classList.contains('open')) toggleScriptPanel();
+    });
+
+    const appendBtn = document.createElement('button');
+    appendBtn.className = 'proposal-btn';
+    appendBtn.textContent = 'Append to doc';
+    appendBtn.title = 'Append this proposal to the end of the working document';
+    appendBtn.addEventListener('click', () => {
+      const sep = scriptEditor.value.trim() ? '\n\n---\n\n' : '';
+      scriptEditor.value = scriptEditor.value + sep + proposalText.trim();
+      docContent = ''; // force dirty
+      saveWorkdoc();
+      if (!scriptPanel.classList.contains('open')) toggleScriptPanel();
+    });
+
+    actions.appendChild(replaceBtn);
+    actions.appendChild(appendBtn);
+    block.appendChild(actions);
+
+    return block;
+  }
+
+  /* ══════════════════════════════════════
+     ElevenLabs TTS — sentence-chunked
+  ══════════════════════════════════════ */
+
+  function splitSentences(text) {
+    let t = text
+      .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|vs|etc|St|Ave|No|Vol)\./gi, '$1\x01')
+      .replace(/\.{2,}/g, m => '\x01'.repeat(m.length));
+
+    const parts = t.split(/(?<=[.!?]["')\]]*)\s+(?=[A-Z"'(\[])/);
+
+    const sentences = parts
+      .map(s => s.replace(/\x01/g, '.').trim())
+      .filter(s => s.length > 0);
+
+    return sentences.length ? sentences : [text.trim()];
+  }
+
+  function stopSpeaking() {
+    ttsGen++;
+    ttsControllers.forEach(c => { try { c && c.abort(); } catch (_) {} });
+    ttsControllers = [];
+    ttsQueue.forEach(item => {
+      if (item.audioUrl) { URL.revokeObjectURL(item.audioUrl); item.audioUrl = null; }
+    });
+    ttsQueue = [];
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    voiceBtn.classList.remove('speaking');
+  }
+
+  async function fetchChunk(queue, index, gen) {
+    const ctrl = new AbortController();
+    ttsControllers[index] = ctrl;
+    try {
+      const r = await fetch(EL_PROXY, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'tts', voice_id: IZZY_VOICE_ID, text: queue[index].text }),
+        signal:  ctrl.signal,
+      });
+      if (!r.ok) throw new Error('TTS ' + r.status);
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      if (ttsGen !== gen) { URL.revokeObjectURL(url); return; }
+      queue[index].audioUrl = url;
+      queue[index].ready    = true;
+    } catch (e) {
+      if (e.name !== 'AbortError' && ttsGen === gen) {
+        queue[index].failed = true;
+        queue[index].ready  = true;
+      }
+    }
+  }
+
+  async function playQueue(queue, index, gen) {
+    if (ttsGen !== gen) return;
+    if (index >= queue.length) {
+      if (ttsGen === gen) voiceBtn.classList.remove('speaking');
+      return;
+    }
+
+    const item = queue[index];
+
+    while (!item.ready) {
+      if (ttsGen !== gen) return;
+      await new Promise(r => setTimeout(r, 40));
+    }
+
+    if (ttsGen !== gen || isMuted) return;
+
+    if (item.failed || !item.audioUrl) {
+      return playQueue(queue, index + 1, gen);
+    }
+
+    voiceBtn.classList.add('speaking');
+    const audio  = new Audio(item.audioUrl);
+    currentAudio = audio;
+
+    const advance = () => {
+      URL.revokeObjectURL(item.audioUrl);
+      if (currentAudio === audio) currentAudio = null;
+      playQueue(queue, index + 1, gen);
+    };
+    audio.onended = advance;
+    audio.onerror = advance;
+
+    try { await audio.play(); } catch (_) { advance(); }
+  }
+
+  async function speak(text) {
+    stopSpeaking();
+    if (isMuted || !text.trim()) return;
+
+    const gen       = ++ttsGen;
+    const sentences = splitSentences(text);
+    const queue     = sentences.map(s => ({ text: s, ready: false, failed: false, audioUrl: null }));
+    ttsQueue        = queue;
+    ttsControllers  = new Array(sentences.length).fill(null);
+
+    sentences.forEach((_, i) => fetchChunk(queue, i, gen));
+    playQueue(queue, 0, gen);
+  }
+
+  /* ══════════════════════════════════════
+     WEB SPEECH API (STT)
+  ══════════════════════════════════════ */
+
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition  = null;
   let isListening  = false;
@@ -393,7 +1097,6 @@
       if (finalText.trim()) {
         inputEl.value = finalText.trim();
         inputEl.focus();
-        /* auto-send on voice — natural for a spoken back-and-forth */
         sendMessage();
       } else {
         inputEl.focus();
@@ -424,188 +1127,17 @@
       }
     });
   } else {
-    /* Browser doesn't support Speech API — disable mic with tooltip */
     micBtn.disabled = true;
     micBtn.title    = 'Voice input not supported in this browser — use Chrome or Safari';
   }
 
-  /* ── Send message ── */
-  async function sendMessage () {
-    const text = inputEl.value.trim();
-    if (!text) return;
+  /* ══════════════════════════════════════
+     DOM HELPERS
+  ══════════════════════════════════════ */
 
-    inputEl.value = '';
-    inputEl.style.height = 'auto';
-    sendBtn.disabled = true;
-    hideError();
-
-    /* Reset deep mode after each send (one-shot toggle) */
-    const sendDeep = deepMode;
-    if (deepMode) {
-      deepMode = false;
-      deepBtn.classList.remove('deep-on');
-      deepBtn.title = 'Deep mode — force Opus for this message';
-    }
-
-    appendMessage('user', text);
-    history.push({ role: 'user', content: text });
-
-    const typingEl = appendTyping();
-    scrollToBottom();
-
-    const t0 = Date.now();
-    try {
-      const res = await fetch(ENDPOINT, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ assistant: ASSISTANT, messages: history, deepMode: sendDeep }),
-      });
-
-      const data = await res.json();
-      typingEl.remove();
-
-      if (!res.ok) {
-        const msg = data.error || `Server error ${res.status}`;
-        showError(msg);
-        history.pop();
-      } else {
-        const reply = data.reply || '';
-        history.push({ role: 'assistant', content: reply });
-        appendMessage('izzy', reply, { model: data.model, source: data.source });
-        lastReply = reply;
-        scrollToBottom();
-
-        const ms = Date.now() - t0;
-        console.log(`[izzy] reply via ${data.source || '?'} (${data.model || '?'}) in ${ms}ms`);
-
-        if (!isMuted && reply) speak(reply).catch(() => {});
-      }
-    } catch (err) {
-      typingEl.remove();
-      showError('Could not reach Izzy. Check your connection.');
-      history.pop();
-    } finally {
-      sendBtn.disabled = false;
-      inputEl.focus();
-    }
-  }
-
-  /* ── ElevenLabs TTS — sentence-chunked streaming playback ── */
-
-  /* Split reply into sentences for low-latency first-audio */
-  function splitSentences (text) {
-    // Protect abbreviations and ellipsis so their periods don't trigger splits
-    let t = text
-      .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|vs|etc|St|Ave|No|Vol)\./gi, '$1\x01')
-      .replace(/\.{2,}/g, m => '\x01'.repeat(m.length));
-
-    // Split after [.!?] (+ optional closing punctuation) followed by whitespace + capital
-    const parts = t.split(/(?<=[.!?]["')\]]*)\s+(?=[A-Z"'(\[])/);
-
-    const sentences = parts
-      .map(s => s.replace(/\x01/g, '.').trim())
-      .filter(s => s.length > 0);
-
-    return sentences.length ? sentences : [text.trim()];
-  }
-
-  /* Cancel all TTS activity immediately */
-  function stopSpeaking () {
-    ttsGen++;
-    ttsControllers.forEach(c => { try { c && c.abort(); } catch (_) {} });
-    ttsControllers = [];
-    ttsQueue.forEach(item => {
-      if (item.audioUrl) { URL.revokeObjectURL(item.audioUrl); item.audioUrl = null; }
-    });
-    ttsQueue = [];
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-    voiceBtn.classList.remove('speaking');
-  }
-
-  /* Fetch TTS audio for one queue slot; marks item ready when done */
-  async function fetchChunk (queue, index, gen) {
-    const ctrl = new AbortController();
-    ttsControllers[index] = ctrl;
-    try {
-      const r = await fetch(EL_PROXY, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ action: 'tts', voice_id: IZZY_VOICE_ID, text: queue[index].text }),
-        signal:  ctrl.signal,
-      });
-      if (!r.ok) throw new Error(`TTS ${r.status}`);
-      const blob = await r.blob();
-      const url  = URL.createObjectURL(blob);
-      if (ttsGen !== gen) { URL.revokeObjectURL(url); return; }   // stale — discard
-      queue[index].audioUrl = url;
-      queue[index].ready    = true;
-    } catch (e) {
-      if (e.name !== 'AbortError' && ttsGen === gen) {
-        queue[index].failed = true;
-        queue[index].ready  = true;   // mark ready so queue can advance past failed chunk
-      }
-    }
-  }
-
-  /* Play queue in order, waiting for each chunk to finish fetching */
-  async function playQueue (queue, index, gen) {
-    if (ttsGen !== gen) return;
-    if (index >= queue.length) {
-      if (ttsGen === gen) voiceBtn.classList.remove('speaking');
-      return;
-    }
-
-    const item = queue[index];
-
-    // Poll until this chunk's fetch completes (typically already done for later chunks)
-    while (!item.ready) {
-      if (ttsGen !== gen) return;
-      await new Promise(r => setTimeout(r, 40));
-    }
-
-    if (ttsGen !== gen || isMuted) return;
-
-    if (item.failed || !item.audioUrl) {
-      return playQueue(queue, index + 1, gen);   // skip bad chunk; keep chain alive
-    }
-
-    voiceBtn.classList.add('speaking');
-    const audio  = new Audio(item.audioUrl);
-    currentAudio = audio;
-
-    const advance = () => {
-      URL.revokeObjectURL(item.audioUrl);
-      if (currentAudio === audio) currentAudio = null;
-      playQueue(queue, index + 1, gen);
-    };
-    audio.onended = advance;
-    audio.onerror = advance;
-
-    try { await audio.play(); } catch (_) { advance(); }
-  }
-
-  /* Entry point: split, prefetch all, play in order */
-  async function speak (text) {
-    stopSpeaking();
-    if (isMuted || !text.trim()) return;
-
-    const gen       = ++ttsGen;
-    const sentences = splitSentences(text);
-    const queue     = sentences.map(s => ({ text: s, ready: false, failed: false, audioUrl: null }));
-    ttsQueue        = queue;
-    ttsControllers  = new Array(sentences.length).fill(null);
-
-    // Kick off all fetches in parallel (first gets audio fastest; rest are prefetched)
-    sentences.forEach((_, i) => fetchChunk(queue, i, gen));
-
-    // Start ordered playback — each clip waits for its chunk, then triggers the next
-    playQueue(queue, 0, gen);
-  }
-
-  /* ── DOM helpers ── */
-  function appendMessage (role, text, meta) {
+  function appendMessage(role, text, meta) {
     const wrapper = document.createElement('div');
-    wrapper.className = `msg ${role}`;
+    wrapper.className = 'msg ' + role;
 
     const label = document.createElement('div');
     label.className = 'msg-label';
@@ -623,18 +1155,51 @@
       }
     }
 
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.innerHTML = escapeHtml(text).replace(/\*(.*?)\*/g, '<em>$1</em>');
-
     wrapper.appendChild(label);
-    wrapper.appendChild(bubble);
+
+    /* Parse proposal blocks from Izzy replies */
+    if (role === 'izzy' || role === 'assistant') {
+      const proposalRe = /<<<PROPOSAL>>>([\s\S]*?)<<<END PROPOSAL>>>/g;
+      let match;
+      let lastIndex = 0;
+      let hasProposal = false;
+
+      while ((match = proposalRe.exec(text)) !== null) {
+        hasProposal = true;
+        /* Text before the proposal */
+        const before = text.slice(lastIndex, match.index).trim();
+        if (before) {
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble';
+          bubble.innerHTML = escapeHtml(before).replace(/\*(.*?)\*/g, '<em>$1</em>');
+          wrapper.appendChild(bubble);
+        }
+        /* Proposal block */
+        wrapper.appendChild(renderProposalBlock(match[1]));
+        lastIndex = proposalRe.lastIndex;
+      }
+
+      /* Remaining text after last proposal (or all text if no proposals) */
+      const remaining = text.slice(lastIndex).trim();
+      if (remaining || !hasProposal) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.innerHTML = escapeHtml(remaining || text).replace(/\*(.*?)\*/g, '<em>$1</em>');
+        wrapper.appendChild(bubble);
+      }
+    } else {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = escapeHtml(text).replace(/\*(.*?)\*/g, '<em>$1</em>');
+      wrapper.appendChild(bubble);
+    }
+
     messagesEl.appendChild(wrapper);
     scrollToBottom();
     return wrapper;
   }
 
-  function appendTyping () {
+  function appendTyping() {
     const wrapper = document.createElement('div');
     wrapper.className = 'msg izzy';
 
@@ -652,28 +1217,39 @@
     return wrapper;
   }
 
-  function scrollToBottom () {
+  function scrollToBottom() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function showError (msg) {
+  function showError(msg) {
     errorToast.textContent = msg;
     errorToast.style.display = 'block';
     clearTimeout(errorToast._t);
     errorToast._t = setTimeout(hideError, 6000);
   }
 
-  function hideError () {
+  function hideError() {
     errorToast.style.display = 'none';
   }
 
-  function escapeHtml (str) {
+  function escapeHtml(str) {
     return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  /* ══════════════════════════════════════
+     INIT
+  ══════════════════════════════════════ */
+
+  (async function init() {
+    await Promise.all([
+      loadMostRecentSession(),
+      loadWorkdoc(),
+    ]);
+  })();
 </script>
 </body>
 </html>
