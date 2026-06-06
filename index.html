@@ -123,6 +123,10 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
+    .msg-label .model-badge {
+      opacity: 0.7;
+      margin-left: 4px;
+    }
 
     /* ── Typing indicator ── */
     .typing-indicator {
@@ -152,7 +156,7 @@
     /* ── Input area ── */
     #input-area {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       padding: 14px 16px;
       border-top: 1px solid var(--border);
       background: var(--surface);
@@ -177,6 +181,7 @@
     }
     #input:focus { border-color: var(--amber); }
     #input::placeholder { color: var(--muted); }
+    #input.listening { border-color: var(--amber-lt); }
 
     #send-btn {
       width: 42px; height: 42px;
@@ -194,8 +199,8 @@
     #send-btn:disabled { background: var(--border); cursor: not-allowed; }
     #send-btn svg { width: 18px; height: 18px; }
 
-    /* ── Voice/replay buttons ── */
-    #voice-btn, #replay-btn {
+    /* ── Icon buttons (voice, replay, mic, deep) ── */
+    .icon-btn {
       width: 42px; height: 42px;
       border-radius: 10px;
       background: transparent;
@@ -204,13 +209,21 @@
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       color: var(--muted);
-      font-size: 18px;
-      transition: border-color 0.15s, color 0.15s;
+      font-size: 17px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
-    #voice-btn:hover, #replay-btn:hover { border-color: var(--amber); color: var(--amber); }
+    .icon-btn:hover { border-color: var(--amber); color: var(--amber); }
+    .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .icon-btn:disabled:hover { border-color: var(--border); color: var(--muted); }
+
     #voice-btn.speaking { color: var(--amber-lt); border-color: var(--amber-lt); animation: voice-pulse 1.2s ease-in-out infinite; }
-    #voice-btn.muted { color: var(--muted); opacity: 0.6; }
-    @keyframes voice-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+    #voice-btn.muted    { color: var(--muted); opacity: 0.6; }
+
+    #mic-btn.listening  { color: var(--amber-lt); border-color: var(--amber-lt); animation: voice-pulse 0.8s ease-in-out infinite; }
+
+    #deep-btn.deep-on   { color: var(--amber-lt); border-color: var(--amber-lt); background: rgba(200, 147, 58, 0.12); }
+
+    @keyframes voice-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
     /* ── Error toast ── */
     #error-toast {
@@ -251,9 +264,11 @@
 <div id="messages"></div>
 
 <div id="input-area">
-  <button id="voice-btn" title="Mute / unmute Izzy's voice" aria-label="Mute voice">🔊</button>
-  <button id="replay-btn" title="Replay last reply" aria-label="Replay">🔁</button>
+  <button id="voice-btn" class="icon-btn" title="Mute / unmute Izzy's voice" aria-label="Mute voice">🔊</button>
+  <button id="replay-btn" class="icon-btn" title="Replay last reply" aria-label="Replay">🔁</button>
+  <button id="mic-btn" class="icon-btn" title="Voice input (hold to speak)" aria-label="Voice input">🎤</button>
   <textarea id="input" rows="1" placeholder="Say something to Izzy…" autocomplete="off" spellcheck="true"></textarea>
+  <button id="deep-btn" class="icon-btn" title="Deep mode — force Opus for this message" aria-label="Deep mode">🧠</button>
   <button id="send-btn" aria-label="Send">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="22" y1="2" x2="11" y2="13"/>
@@ -269,9 +284,7 @@
   const ASSISTANT = 'izzy';
 
   /* ── ElevenLabs TTS via the shared el-proxy on bill-talk ── */
-  const EL_PROXY = 'https://bill-talk.netlify.app/.netlify/functions/el-proxy';
-  /* Izzy placeholder voice — Domi (strong, confident; warm edge fits NYC character).
-   * Swap IZZY_VOICE_ID to Eric's friend's ElevenLabs voice clone when it's ready. */
+  const EL_PROXY    = 'https://bill-talk.netlify.app/.netlify/functions/el-proxy';
   const IZZY_VOICE_ID = 'RsotjdYjhjPD5V0I7nzI';
 
   const messagesEl = document.getElementById('messages');
@@ -279,14 +292,17 @@
   const sendBtn    = document.getElementById('send-btn');
   const voiceBtn   = document.getElementById('voice-btn');
   const replayBtn  = document.getElementById('replay-btn');
+  const micBtn     = document.getElementById('mic-btn');
+  const deepBtn    = document.getElementById('deep-btn');
   const errorToast = document.getElementById('error-toast');
 
-  /* Conversation history sent to the server (excludes system prompt, which is server-side) */
+  /* Conversation history sent to the server */
   const history = [];
 
-  let isMuted     = false;
+  let isMuted      = false;
   let currentAudio = null;
-  let lastReply   = '';
+  let lastReply    = '';
+  let deepMode     = false;
 
   /* ── Greeting ── */
   appendMessage('izzy', `Hey. I'm Izzy.\n\nI'm the AI collaborator on *Witness Projection* — dramaturge, life coach, research partner. I know the whole arc of the work: the two Erics, the Short Eyes monologue, the tremor, Sugar, the Nuyorican scene, all of it.\n\nI'm not here to flatter you. I'm here to do the work with you. So — what've you got?`);
@@ -300,7 +316,7 @@
   /* ── Send on Enter / Cmd+Enter / Ctrl+Enter; Shift+Enter = newline ── */
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
-      if (e.shiftKey && !e.metaKey && !e.ctrlKey) return; // Shift+Enter → newline
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey) return;
       e.preventDefault();
       sendMessage();
     }
@@ -323,6 +339,95 @@
     if (lastReply) speak(lastReply);
   });
 
+  /* ── Deep mode toggle ── */
+  deepBtn.addEventListener('click', () => {
+    deepMode = !deepMode;
+    deepBtn.classList.toggle('deep-on', deepMode);
+    deepBtn.title = deepMode
+      ? 'Deep mode ON — Opus forced (click to disable)'
+      : 'Deep mode — force Opus for this message';
+  });
+
+  /* ── Web Speech API (STT) ── */
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition  = null;
+  let isListening  = false;
+
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous     = false;
+    recognition.interimResults = true;
+    recognition.lang           = 'en-US';
+
+    let finalText = '';
+
+    recognition.onstart = () => {
+      finalText = '';
+      inputEl.value = '';
+      inputEl.classList.add('listening');
+      inputEl.placeholder = 'Listening…';
+      micBtn.classList.add('listening');
+      micBtn.title = 'Stop recording';
+    };
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      finalText   = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) finalText  += event.results[i][0].transcript;
+        else                          interim     += event.results[i][0].transcript;
+      }
+      inputEl.value = finalText || interim;
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      micBtn.classList.remove('listening');
+      micBtn.title = 'Voice input';
+      inputEl.classList.remove('listening');
+      inputEl.placeholder = 'Say something to Izzy…';
+      if (finalText.trim()) {
+        inputEl.value = finalText.trim();
+        inputEl.focus();
+        /* auto-send on voice — natural for a spoken back-and-forth */
+        sendMessage();
+      } else {
+        inputEl.focus();
+      }
+    };
+
+    recognition.onerror = (event) => {
+      isListening = false;
+      micBtn.classList.remove('listening');
+      inputEl.classList.remove('listening');
+      inputEl.placeholder = 'Say something to Izzy…';
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        showError('Voice input error: ' + event.error);
+      }
+    };
+
+    micBtn.addEventListener('click', () => {
+      if (isListening) {
+        recognition.stop();
+        isListening = false;
+      } else {
+        try {
+          recognition.start();
+          isListening = true;
+        } catch (e) {
+          showError('Could not start voice input.');
+        }
+      }
+    });
+  } else {
+    /* Browser doesn't support Speech API — disable mic with tooltip */
+    micBtn.disabled = true;
+    micBtn.title    = 'Voice input not supported in this browser — use Chrome or Safari';
+  }
+
+  /* ── Send message ── */
   async function sendMessage () {
     const text = inputEl.value.trim();
     if (!text) return;
@@ -332,17 +437,26 @@
     sendBtn.disabled = true;
     hideError();
 
+    /* Reset deep mode after each send (one-shot toggle) */
+    const sendDeep = deepMode;
+    if (deepMode) {
+      deepMode = false;
+      deepBtn.classList.remove('deep-on');
+      deepBtn.title = 'Deep mode — force Opus for this message';
+    }
+
     appendMessage('user', text);
     history.push({ role: 'user', content: text });
 
     const typingEl = appendTyping();
     scrollToBottom();
 
+    const t0 = Date.now();
     try {
       const res = await fetch(ENDPOINT, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ assistant: ASSISTANT, messages: history }),
+        body:    JSON.stringify({ assistant: ASSISTANT, messages: history, deepMode: sendDeep }),
       });
 
       const data = await res.json();
@@ -355,12 +469,14 @@
       } else {
         const reply = data.reply || '';
         history.push({ role: 'assistant', content: reply });
-        appendMessage('izzy', reply);
+        appendMessage('izzy', reply, { model: data.model, source: data.source });
         lastReply = reply;
         scrollToBottom();
 
-        /* Auto-speak — user pressing Send is the gesture that unlocks audio */
-        if (!isMuted && reply) speak(reply).catch(() => {}); // TTS failure never blocks chat
+        const ms = Date.now() - t0;
+        console.log(`[izzy] reply via ${data.source || '?'} (${data.model || '?'}) in ${ms}ms`);
+
+        if (!isMuted && reply) speak(reply).catch(() => {});
       }
     } catch (err) {
       typingEl.remove();
@@ -372,7 +488,7 @@
     }
   }
 
-  /* ── ElevenLabs TTS via el-proxy (POST to avoid URL-length limits on long replies) ── */
+  /* ── ElevenLabs TTS via el-proxy ── */
   async function speak (text) {
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     voiceBtn.classList.add('speaking');
@@ -395,18 +511,29 @@
     } catch (e) {
       voiceBtn.classList.remove('speaking');
       currentAudio = null;
-      /* TTS failure is silent — text reply is already visible */
     }
   }
 
   /* ── DOM helpers ── */
-  function appendMessage (role, text) {
+  function appendMessage (role, text, meta) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${role}`;
 
-    const label  = document.createElement('div');
+    const label = document.createElement('div');
     label.className = 'msg-label';
-    label.textContent = role === 'user' ? 'You' : 'Izzy';
+
+    if (role === 'user') {
+      label.textContent = 'You';
+    } else {
+      label.textContent = 'Izzy';
+      if (meta && meta.source) {
+        const badge = document.createElement('span');
+        badge.className = 'model-badge';
+        badge.textContent = meta.source === 'haiku-api' ? '⚡' : '🧠';
+        badge.title = meta.source + (meta.model ? ' · ' + meta.model : '');
+        label.appendChild(badge);
+      }
+    }
 
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
