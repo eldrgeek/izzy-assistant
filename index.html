@@ -410,6 +410,21 @@
       text-align: center;
     }
 
+    /* ── Voice fallback notice ── */
+    .voice-fallback-note {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      padding: 5px 14px;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      max-width: fit-content;
+      align-self: center;
+    }
+
     /* ── Error toast ── */
     #error-toast {
       display: none;
@@ -544,6 +559,11 @@
   let ttsQueue       = [];
   let ttsControllers = [];
   let ttsGen         = 0;
+
+  /* ── EL fallback state ── */
+  // true when EL returns a quota/auth error; cleared when EL succeeds again
+  let elFailing           = false;
+  let fallbackIntroShown  = false; // in-memory guard to avoid double intro within a session
 
   /* ══════════════════════════════════════
      KNOWLEDGE API (RAG retrieval)
@@ -995,6 +1015,64 @@
   }
 
   /* ══════════════════════════════════════
+     VOICE FALLBACK (Web Speech API)
+     Self-contained helper — intended to be lifted into soma-guide engine
+     for other agents (Bill, guide) without modification.
+  ══════════════════════════════════════ */
+
+  const FALLBACK_INTRO_KEY = "izzy_voice_fallback_introduced_v1";
+
+  function getBrowserVoice() {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return null; // not loaded yet — browser uses its default
+    return (
+      voices.find(v => v.lang === "en-US" && v.name === "Samantha") ||
+      voices.find(v => v.lang === "en-US" && v.localService) ||
+      voices.find(v => v.lang.startsWith("en") && v.localService) ||
+      voices.find(v => v.lang.startsWith("en")) ||
+      null
+    );
+  }
+
+  function showFallbackNote() {
+    const note = document.createElement("div");
+    note.className = "voice-fallback-note";
+    note.textContent = "🔈 Using your device voice — Izzy's usual voice is temporarily unavailable";
+    messagesEl.appendChild(note);
+    scrollToBottom();
+  }
+
+  // Speak text via browser TTS. On first use ever on this device, speaks a brief
+  // self-introduction first and shows a visible note in the chat, then stores a
+  // localStorage flag so the intro never repeats across reloads or sessions.
+  async function speakFallback(text, gen) {
+    return new Promise(resolve => {
+      const speakUtterance = (str, onDone) => {
+        if (ttsGen !== gen) { resolve(); return; }
+        const utt = new SpeechSynthesisUtterance(str);
+        utt.rate  = 0.92;
+        utt.pitch = 1.0;
+        const voice = getBrowserVoice();
+        if (voice) utt.voice = voice;
+        utt.onend  = onDone;
+        utt.onerror = resolve; // cancel or error — just resolve and stop
+        speechSynthesis.speak(utt);
+      };
+
+      const needsIntro = !localStorage.getItem(FALLBACK_INTRO_KEY) && !fallbackIntroShown;
+      if (needsIntro) {
+        fallbackIntroShown = true;
+        localStorage.setItem(FALLBACK_INTRO_KEY, "1");
+        showFallbackNote();
+        const intro = "Hi there — I am a stand-in voice. Izzy's usual voice is temporarily unavailable, so I will read her replies until it returns.";
+        speakUtterance(intro, () => speakUtterance(text, resolve));
+      } else {
+        speakUtterance(text, resolve);
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════
      ElevenLabs TTS — sentence-chunked
   ══════════════════════════════════════ */
 
@@ -1021,6 +1099,7 @@
     });
     ttsQueue = [];
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    speechSynthesis.cancel(); // also stop any active browser TTS fallback
     voiceBtn.classList.remove('speaking');
   }
 
@@ -1034,7 +1113,12 @@
         body:    JSON.stringify({ action: 'tts', voice_id: IZZY_VOICE_ID, text: queue[index].text }),
         signal:  ctrl.signal,
       });
-      if (!r.ok) throw new Error('TTS ' + r.status);
+      if (!r.ok) {
+        // 401 = quota exhausted / invalid key; 429 = rate-limited — EL unavailable this session
+        if (r.status === 401 || r.status === 429 || r.status >= 500) elFailing = true;
+        throw new Error('TTS ' + r.status);
+      }
+      elFailing = false; // EL is healthy again — primary voice will resume on next speak()
       const blob = await r.blob();
       const url  = URL.createObjectURL(blob);
       if (ttsGen !== gen) { URL.revokeObjectURL(url); return; }
@@ -1064,6 +1148,18 @@
 
     if (ttsGen !== gen || isMuted) return;
 
+    // Mid-stream EL failure: abort remaining EL fetches and hand all remaining text to browser TTS
+    if (item.failed && elFailing) {
+      for (let i = index + 1; i < queue.length; i++) {
+        try { ttsControllers[i] && ttsControllers[i].abort(); } catch (_) {}
+      }
+      const remaining = queue.slice(index).map(q => q.text).join(' ');
+      voiceBtn.classList.add('speaking');
+      await speakFallback(remaining, gen);
+      if (ttsGen === gen) voiceBtn.classList.remove('speaking');
+      return;
+    }
+
     if (item.failed || !item.audioUrl) {
       return playQueue(queue, index + 1, gen);
     }
@@ -1087,7 +1183,16 @@
     stopSpeaking();
     if (isMuted || !text.trim()) return;
 
-    const gen       = ++ttsGen;
+    const gen = ++ttsGen;
+
+    // If EL is already known to be failing, skip the EL path entirely
+    if (elFailing) {
+      voiceBtn.classList.add('speaking');
+      await speakFallback(text, gen);
+      if (ttsGen === gen) voiceBtn.classList.remove('speaking');
+      return;
+    }
+
     const sentences = splitSentences(text);
     const queue     = sentences.map(s => ({ text: s, ready: false, failed: false, audioUrl: null }));
     ttsQueue        = queue;
