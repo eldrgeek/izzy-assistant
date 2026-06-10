@@ -924,8 +924,17 @@
     try {
       const res = await fetch(ENDPOINT, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ assistant: ASSISTANT, messages: apiMessages, deepMode: sendDeep }),
+        headers: {
+          'Content-Type':   'application/json',
+          'X-Relay-Source': 'izzy-site',
+          'X-Namespace':    RAG_NAMESPACE,
+        },
+        body:    JSON.stringify({
+          assistant:  ASSISTANT,
+          messages:   apiMessages,
+          deepMode:   sendDeep,
+          session_id: currentSessionId || 'default',
+        }),
       });
 
       const data = await res.json();
