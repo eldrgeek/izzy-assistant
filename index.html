@@ -449,6 +449,105 @@
       .bubble   { font-size: 14px; }
       #input    { font-size: 14px; }
     }
+
+    /* ── Feedback modal ── */
+    #feedback-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.70);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #feedback-overlay.hidden { display: none; }
+
+    .feedback-panel {
+      background: var(--surface);
+      border: 1px solid var(--amber);
+      border-radius: 12px;
+      width: min(420px, 100%);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .feedback-panel h2 {
+      font-family: var(--font-ui);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--amber-lt);
+      margin: 0;
+    }
+    .feedback-panel label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .feedback-panel select,
+    .feedback-panel textarea {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--izzy-txt);
+      font-family: var(--font);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .feedback-panel select:focus,
+    .feedback-panel textarea:focus { border-color: var(--amber); }
+    .feedback-panel textarea {
+      resize: vertical;
+      min-height: 90px;
+      line-height: 1.55;
+    }
+    .feedback-row {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .feedback-cancel {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .feedback-cancel:hover { border-color: var(--amber); color: var(--amber); }
+    .feedback-submit {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      padding: 7px 16px;
+      border-radius: 7px;
+      border: none;
+      background: var(--amber);
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .feedback-submit:hover { background: var(--amber-lt); }
+    .feedback-submit:disabled { background: var(--border); cursor: not-allowed; }
+    .feedback-status {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      text-align: center;
+      min-height: 16px;
+    }
+    .feedback-status.ok  { color: #7ec87e; }
+    .feedback-status.err { color: #e07070; }
   </style>
 </head>
 <body>
@@ -462,6 +561,7 @@
   <div class="header-actions">
     <button id="history-btn" class="icon-btn" title="Session history">📜</button>
     <button id="script-btn" class="icon-btn" title="Working document">📄</button>
+    <button id="feedback-btn" class="icon-btn" title="Request a change / report an issue">🔧</button>
     <button id="new-session-btn" class="icon-btn" title="New session">✚</button>
   </div>
 </header>
@@ -506,6 +606,31 @@
 </div>
 
 <div id="error-toast"></div>
+
+<!-- Feedback / change-request modal -->
+<div id="feedback-overlay" class="hidden">
+  <div class="feedback-panel">
+    <h2>Request a change / report an issue</h2>
+    <div>
+      <label for="feedback-type">Type</label>
+      <select id="feedback-type">
+        <option value="feature">Feature request / improvement</option>
+        <option value="bug">Bug report</option>
+        <option value="content">Content or knowledge issue</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label for="feedback-msg">Description</label>
+      <textarea id="feedback-msg" placeholder="Describe what you'd like changed, fixed, or added…"></textarea>
+    </div>
+    <div class="feedback-status" id="feedback-status"></div>
+    <div class="feedback-row">
+      <button class="feedback-cancel" id="feedback-cancel">Cancel</button>
+      <button class="feedback-submit" id="feedback-submit">Send request</button>
+    </div>
+  </div>
+</div>
 
 <script src="izzy-guide-config.js"></script>
 <script type="module" src="https://soma-guide.netlify.app/soma-guide.js"></script>
@@ -1399,6 +1524,78 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  /* ══════════════════════════════════════
+     FEEDBACK MODAL
+  ══════════════════════════════════════ */
+
+  const FEEDBACK_ENDPOINT = 'https://vpsmikewolf.duckdns.org/infer/feedback/public';
+  const FEEDBACK_NS       = 'eric/izzy';
+
+  const feedbackOverlay = document.getElementById('feedback-overlay');
+  const feedbackBtn     = document.getElementById('feedback-btn');
+  const feedbackCancel  = document.getElementById('feedback-cancel');
+  const feedbackSubmit  = document.getElementById('feedback-submit');
+  const feedbackType    = document.getElementById('feedback-type');
+  const feedbackMsg     = document.getElementById('feedback-msg');
+  const feedbackStatus  = document.getElementById('feedback-status');
+
+  function openFeedbackModal() {
+    feedbackMsg.value = '';
+    feedbackStatus.textContent = '';
+    feedbackStatus.className = 'feedback-status';
+    feedbackSubmit.disabled = false;
+    feedbackOverlay.classList.remove('hidden');
+    feedbackMsg.focus();
+  }
+
+  function closeFeedbackModal() {
+    feedbackOverlay.classList.add('hidden');
+  }
+
+  feedbackBtn.addEventListener('click', openFeedbackModal);
+  feedbackCancel.addEventListener('click', closeFeedbackModal);
+  feedbackOverlay.addEventListener('click', e => {
+    if (e.target === feedbackOverlay) closeFeedbackModal();
+  });
+
+  feedbackSubmit.addEventListener('click', async () => {
+    const msg = feedbackMsg.value.trim();
+    if (!msg) {
+      feedbackStatus.textContent = 'Please describe your request.';
+      feedbackStatus.className = 'feedback-status err';
+      return;
+    }
+    feedbackSubmit.disabled = true;
+    feedbackStatus.textContent = 'Sending…';
+    feedbackStatus.className = 'feedback-status';
+    try {
+      const r = await fetch(FEEDBACK_ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          property: FEEDBACK_NS,
+          type:     feedbackType.value,
+          message:  msg,
+          page:     window.location.href,
+        }),
+      });
+      if (r.ok) {
+        feedbackStatus.textContent = 'Sent — thank you. Your request will reach the site owner.';
+        feedbackStatus.className = 'feedback-status ok';
+        setTimeout(closeFeedbackModal, 2000);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        feedbackStatus.textContent = 'Could not send: ' + (d.error || r.status);
+        feedbackStatus.className = 'feedback-status err';
+        feedbackSubmit.disabled = false;
+      }
+    } catch (e) {
+      feedbackStatus.textContent = 'Network error — please try again.';
+      feedbackStatus.className = 'feedback-status err';
+      feedbackSubmit.disabled = false;
+    }
+  });
 
   /* ══════════════════════════════════════
      INIT
