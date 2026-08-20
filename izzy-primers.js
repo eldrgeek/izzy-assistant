@@ -31,6 +31,8 @@ window.IzzyPrimers = {
 
     "Instead — a series of short episodes. Each one 20 to 30 minutes, one subject, done in a single sitting. Each should give us four to six clips that stand on their own. Someone should be able to watch any one episode and get a whole thing, not a fragment of a bigger thing.",
 
+    "One thing to hold onto while you plan: you're not handing this to somebody else to run. You'll be in the room. We record these as live Zoom conversations and you join and conduct them in your own voice — so write the questions to be said out loud, not read off a page. What you give me here becomes your own briefing when you walk in.",
+
     "The first one is the origin story: where Witness Projection actually came from. Not the theme — the moment. What happened, where I was, what I couldn't stop thinking about afterward. You know this material. You know which thread really starts it, and you know the version I tell at parties isn't necessarily it.",
 
     "What I want from you now, before we record anything:",
