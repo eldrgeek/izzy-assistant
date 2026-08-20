@@ -294,6 +294,17 @@
       outline: none;
       transition: border-color 0.15s;
     }
+    /* A composer holding a primed opening message gets more room — it is meant
+       to be read before it is sent, not just typed into. It also takes its own
+       full-width row, otherwise the icon buttons squeeze it into an unreadable
+       column on a phone. Both revert on send. */
+    #input.primed { max-height: 46vh; }
+    #input-area.primed-area { flex-wrap: wrap; }
+    #input-area.primed-area #input {
+      flex-basis: 100%;
+      order: -1;
+      margin-bottom: 4px;
+    }
     #input:focus { border-color: var(--amber); }
     #input::placeholder { color: var(--muted); }
     #input.listening { border-color: var(--amber-lt); }
@@ -632,6 +643,7 @@
   </div>
 </div>
 
+<script src="izzy-primers.js"></script>
 <script src="izzy-guide-config.js"></script>
 <script type="module" src="https://soma-guide.netlify.app/soma-guide.js"></script>
 
@@ -649,6 +661,7 @@
   /* ── DOM refs ── */
   const messagesEl  = document.getElementById('messages');
   const inputEl     = document.getElementById('input');
+  const inputArea   = document.getElementById('input-area');
   const sendBtn     = document.getElementById('send-btn');
   const voiceBtn    = document.getElementById('voice-btn');
   const replayBtn   = document.getElementById('replay-btn');
@@ -932,10 +945,24 @@
      AUTO-RESIZE TEXTAREA
   ══════════════════════════════════════ */
 
-  inputEl.addEventListener('input', () => {
+  /* Composer grows to fit, capped — taller while it holds a primed message
+     (see applyPrimer) so a long opening message can actually be read. */
+  function composerCap() {
+    return inputEl.classList.contains('primed')
+      ? Math.round(window.innerHeight * 0.46)
+      : 180;
+  }
+
+  function resizeComposer() {
     inputEl.style.height = 'auto';
-    inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
-  });
+    /* scrollHeight reads 0 if layout hasn't settled (e.g. during init) —
+       leaving the height unset is correct there, and the caller re-runs
+       on the next frame. */
+    const h = Math.min(inputEl.scrollHeight, composerCap());
+    inputEl.style.height = h > 0 ? h + 'px' : '';
+  }
+
+  inputEl.addEventListener('input', resizeComposer);
 
   /* Send on Enter / Cmd+Enter; Shift+Enter = newline */
   inputEl.addEventListener('keydown', e => {
@@ -978,6 +1005,8 @@
     if (!text) return;
 
     inputEl.value = '';
+    inputEl.classList.remove('primed');
+    inputArea.classList.remove('primed-area');
     inputEl.style.height = 'auto';
     sendBtn.disabled = true;
     hideError();
@@ -1370,7 +1399,7 @@
       }
       inputEl.value = finalText || interim;
       inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + 'px';
+      resizeComposer();
     };
 
     recognition.onend = () => {
@@ -1598,14 +1627,83 @@
   });
 
   /* ══════════════════════════════════════
+     PRIMED LINKS  (?prime=<key>  |  ?ask=<text>)
+
+     Opening a primed link drops a prepared opening message into the composer
+     so it can be read and sent with one tap — no copy-paste from an email.
+     Never auto-sends: the reader is meant to look it over and fire it (or
+     edit it) themselves. Named primers live in izzy-primers.js, so the text
+     behind a link can be revised after the link has already been sent.
+  ══════════════════════════════════════ */
+
+  /* Read (and consume) the primer named by the URL. Returns '' when the link
+     carries none, or names a key that no longer exists. */
+  function readPrimer() {
+    let raw = '';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const key = params.get('prime');
+      if (key) {
+        raw = (window.IzzyPrimers && window.IzzyPrimers[key]) || '';
+        if (!raw) console.warn('[izzy] unknown primer key:', key);
+      }
+      if (!raw) raw = params.get('ask') || '';
+    } catch (e) {
+      console.warn('[izzy] primer parse failed:', e);
+    }
+    if (!raw) return '';
+
+    /* Strip the param so a later refresh doesn't re-prime over live work. */
+    try {
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch (e) { /* non-fatal */ }
+
+    return raw;
+  }
+
+  function applyPrimer(raw) {
+    if (!raw) return;
+
+    inputEl.value = raw;
+    inputEl.classList.add('primed');
+    inputArea.classList.add('primed-area');
+
+    /* Size and focus only once the page has actually laid out. The stylesheet
+       is render-blocking and served from another origin, so measuring during
+       init returns a height of zero (collapsing the composer to one line) or a
+       half-settled value. window 'load' fires after stylesheets apply; one
+       extra frame covers the final layout pass. */
+    const revealPrimer = () => requestAnimationFrame(() => {
+      resizeComposer();
+      inputEl.focus();
+      /* Open at the TOP of the message — it is here to be read, not appended to. */
+      inputEl.setSelectionRange(0, 0);
+      inputEl.scrollTop = 0;
+      scrollToBottom();
+    });
+
+    if (document.readyState === 'complete') revealPrimer();
+    else window.addEventListener('load', revealPrimer, { once: true });
+  }
+
+  /* ══════════════════════════════════════
      INIT
   ══════════════════════════════════════ */
 
   (async function init() {
+    /* A primed link opens a FRESH session. Restoring the last conversation
+       instead would bury the primed message under old context — and the guard
+       against clobbering live work would suppress it entirely. Nothing is
+       written to the store until the first message is actually sent, so an
+       unused primed link costs nothing. */
+    const primer = readPrimer();
+
     await Promise.all([
-      loadMostRecentSession(),
+      primer ? startNewSession() : loadMostRecentSession(),
       loadWorkdoc(),
     ]);
+
+    applyPrimer(primer);
   })();
 </script>
 </body>
