@@ -51,7 +51,7 @@ window.IzzyPrimers = {
 
   /* Meaning with AI — Eric's coaching practice (2026-09-18).
      Eric texted Mike: he taught a client to use her AI for her overwhelm, and
-     she named it Dolly. These four primers make Izzy his partner in turning
+     she named it Dolly. These primers make Izzy his partner in turning
      that one session into a repeatable, paid practice. Source document:
      the Proof doc "Meaning with AI — marketing and money" (Mike + Claude). */
 
@@ -127,22 +127,9 @@ window.IzzyPrimers = {
     "Put the run of show in a proposal block, wrapped in <<<PROPOSAL>>> and <<<END PROPOSAL>>>.",
   ].join("\n\n"),
 
-  'session-debrief': [
-    "Izzy — debrief with me. I just finished a coaching session.",
-
-    "I'm going to tell you what happened, and I want you to interview me about it the way you'd interview me about a rehearsal. Ask one question at a time. Start with what the person walked in carrying, then what their AI ended up being called and why, then the moment it clicked or didn't.",
-
-    "When we're done, write me three things:",
-
-    "1. A case note, with no names and no details that could identify the person: the situation in one line, what was piling up, the name they chose and why, and the one job their AI now does for them.",
-
-    "2. What I did that worked and what I'd do differently, as honest notes to myself.",
-
-    "3. A short follow-up message I can send the client in a week, in my voice, checking whether they and their AI are still talking.",
-
-    "If the person agrees to let me tell their story publicly, I'll say so, and you can also draft a 150-word version for social media. If I don't say so, assume the answer is no.",
-
-    "Put the case note and the follow-up message in a proposal block, wrapped in <<<PROPOSAL>>> and <<<END PROPOSAL>>>, so they land in the working document. Here's what happened:",
-  ].join("\n\n"),
+  /* 'session-debrief' was drafted here and withdrawn the same day: it would put
+     client material into Izzy's saved sessions and working document, and the
+     /izzy/* store is still readable by anyone with the address. Restore it only
+     after that store requires sign-in. Draft text: the Proof doc, section 10. */
 
 };
