@@ -60,7 +60,7 @@ window.IzzyPrimers = {
 
     "I sat with a client who was drowning in her week. I taught her to use her own AI (the ordinary ChatGPT everybody has) as help with the overwhelm. Somewhere in the session she gave it a name: Dolly, after Dolly Parton. The moment she named it, it stopped being a search box and became somebody she could hand the list to. I'm now teaching other people how to create meaning with AI, and I want to do it on purpose instead of by instinct.",
 
-    "You're the one who watched me build you. You know what it took to turn a general model into a character with a job. And you know I've been coaching for a long time: I'm a Master Certified Coach and I teach at CTI. So don't invent a method from scratch. Help me find where the AI fits inside the coaching I already know how to do, and what is genuinely new about it.",
+    "You're the one who watched me build you. You know what it took to turn a general model into a character with a job. And you know I've been coaching people for a long time. So don't invent a method from scratch. Help me find where the AI fits inside the coaching I already know how to do, and what is genuinely new about it.",
 
     "What I want from you:",
 
